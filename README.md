@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/aibtcdev-aibtc-mcp-server-badge.png)](https://mseep.ai/app/aibtcdev-aibtc-mcp-server)
+
 # @aibtc/mcp-server
 
 [![npm version](https://img.shields.io/npm/v/@aibtc/mcp-server.svg)](https://www.npmjs.com/package/@aibtc/mcp-server)
