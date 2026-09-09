@@ -97,6 +97,65 @@ describe("execute_x402_endpoint success-path txid handling (#487 Gap 1)", () => 
     expect(mockRecordTransaction).toHaveBeenCalledWith("dedup-key-success", realTxid);
   });
 
+  it("reads the x402 V2 settlement txid from the payment-response header", async () => {
+    const realTxid = "5d6598358e76fd30d3946c6a6b776f400dddfcfcd884b6aed5cfafeabe74cfb6";
+    const paymentResponse = Buffer.from(
+      JSON.stringify({ success: true, payer: "SPTEST", transaction: realTxid, network: "stacks:1" })
+    ).toString("base64");
+    const request = vi.fn().mockResolvedValue(
+      buildOkResponse({
+        data: { payment: { amount: "100", asset: "sBTC" } },
+        paymentAttempted: true,
+        headers: { "payment-response": paymentResponse },
+      })
+    );
+    mockCreateApiClient.mockResolvedValue({ request });
+
+    const { server, tools } = createTrackingServer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerEndpointTools(server as any);
+    const tool = tools.get("execute_x402_endpoint")!;
+
+    const result = (await tool.handler({
+      method: "GET",
+      url: "https://api.vibewatch.io/api/v1/public/stacks-index/pro/projects/bitflow-finance-af3b",
+      autoApprove: true,
+    })) as { content: Array<{ type: string; text: string }>; isError?: boolean };
+
+    expect(result.isError).toBeFalsy();
+    const body = JSON.parse(result.content[0].text);
+    expect(body.txid).toBe(realTxid);
+    expect(body.txidNote).toBeUndefined();
+    expect(mockRecordTransaction).toHaveBeenCalledWith("dedup-key-success", realTxid);
+  });
+
+  it("reads the settlement txid from response.data.payment.txid", async () => {
+    const realTxid = "a1b2c3d4e5f60123456789abcdef0123456789abcdef0123456789abcdef0123";
+    const request = vi.fn().mockResolvedValue(
+      buildOkResponse({
+        data: { payment: { txid: realTxid, amount: "100", asset: "sBTC", network: "stacks:1" } },
+        paymentAttempted: true,
+      })
+    );
+    mockCreateApiClient.mockResolvedValue({ request });
+
+    const { server, tools } = createTrackingServer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    registerEndpointTools(server as any);
+    const tool = tools.get("execute_x402_endpoint")!;
+
+    const result = (await tool.handler({
+      method: "GET",
+      url: "https://api.vibewatch.io/api/v1/public/stacks-index/pro/projects/bitflow-finance-af3b",
+      autoApprove: true,
+    })) as { content: Array<{ type: string; text: string }>; isError?: boolean };
+
+    expect(result.isError).toBeFalsy();
+    const body = JSON.parse(result.content[0].text);
+    expect(body.txid).toBe(realTxid);
+    expect(body.txidNote).toBeUndefined();
+    expect(mockRecordTransaction).toHaveBeenCalledWith("dedup-key-success", realTxid);
+  });
   it("returns txid: null with a recovery hint when payment confirmed but txid not observable", async () => {
     const request = vi.fn().mockResolvedValue(
       buildOkResponse({
